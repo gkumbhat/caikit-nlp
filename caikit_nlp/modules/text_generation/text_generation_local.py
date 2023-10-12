@@ -209,6 +209,9 @@ class TextGeneration(ModuleBase):
             TextGeneration
                 Instance of this class with fine-tuned models.
         """
+        error.value_check(
+            "<NLP96406893E>", len(train_stream) > 0, "train_stream cannot be empty"
+        )
 
         torch_dtype = get_torch_dtype(torch_dtype)
 
@@ -475,11 +478,11 @@ class TextGeneration(ModuleBase):
         min_new_tokens: Optional[int] = 0,
         truncate_input_tokens: Optional[int] = 0,
         decoding_method: Optional[str] = "GREEDY",
-        top_k: Optional[int] = 0,
-        top_p: Optional[float] = 0.0,
-        typical_p: Optional[float] = 0.0,
-        temperature: Optional[float] = 1.0,
-        repetition_penalty: Optional[float] = 0.0,
+        top_k: Optional[int] = None,
+        top_p: Optional[float] = None,
+        typical_p: Optional[float] = None,
+        temperature: Optional[float] = None,
+        repetition_penalty: Optional[float] = None,
         max_time: Optional[float] = None,
         **kwargs,
     ) -> GeneratedTextResult:

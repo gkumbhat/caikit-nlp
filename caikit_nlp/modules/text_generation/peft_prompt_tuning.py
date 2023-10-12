@@ -39,6 +39,7 @@ from transformers import (
 from transformers.models.auto.tokenization_auto import AutoTokenizer
 import numpy as np
 import torch
+import transformers
 
 # First Party
 from caikit.core.data_model import DataStream
@@ -160,12 +161,12 @@ class PeftPromptTuning(ModuleBase):
         min_new_tokens: Optional[int] = 0,
         truncate_input_tokens: Optional[int] = 0,
         decoding_method: Optional[str] = "GREEDY",
-        top_k: Optional[int] = 0,
-        top_p: Optional[float] = 1.0,
-        typical_p: Optional[float] = 1.0,
-        temperature: Optional[float] = 1.0,
+        top_k: Optional[int] = None,
+        top_p: Optional[float] = None,
+        typical_p: Optional[float] = None,
+        temperature: Optional[float] = None,
         seed: Optional[np.uint64] = None,
-        repetition_penalty: Optional[float] = 1.0,
+        repetition_penalty: Optional[float] = None,
         max_time: Optional[float] = None,
         exponential_decay_length_penalty: Optional[
             Union[Tuple[int, float], ExponentialDecayLengthPenalty]
@@ -220,12 +221,12 @@ class PeftPromptTuning(ModuleBase):
         min_new_tokens=0,
         truncate_input_tokens: Optional[int] = 0,
         decoding_method: Optional[str] = "GREEDY",
-        top_k: Optional[int] = 0,
-        top_p: Optional[float] = 0.0,
-        typical_p: Optional[float] = 0.0,
-        temperature: Optional[float] = 1.0,
+        top_k: Optional[int] = None,
+        top_p: Optional[float] = None,
+        typical_p: Optional[float] = None,
+        temperature: Optional[float] = None,
         seed: Optional[np.uint64] = None,
-        repetition_penalty: Optional[float] = 0.0,
+        repetition_penalty: Optional[float] = None,
         max_time: Optional[float] = None,
         exponential_decay_length_penalty: Optional[
             Union[Tuple[int, float], ExponentialDecayLengthPenalty]
@@ -298,7 +299,7 @@ class PeftPromptTuning(ModuleBase):
         accumulate_steps: Optional[int] = 32,
         torch_dtype: Optional[str] = None,  # TODO: Optional[Union[torch.dtype, str]]
         silence_progress_bars: Optional[bool] = True,
-        random_seed: int = RANDOM_SEED,
+        seed: int = RANDOM_SEED,
         **kwargs,
     ) -> "PeftPromptTuning":
         """Run prompt tuning (vanilla or MPT) through PEFT on a CausalLM or Seq2seq model
@@ -344,10 +345,21 @@ class PeftPromptTuning(ModuleBase):
                 underpinning the resource will be converted in place to the correct torch dtype.
             silence_progress_bars: bool
                 Silences TQDM progress bars at train time. Default: True.
+            seed: int
+                Integer to be used as random seed for training.
         Returns:
             PeftPromptTuning
                 Instance of this class with tuned prompt vectors.
         """
+        error.value_check(
+            "<NLP46653367E>", len(train_stream) > 0, "train_stream cannot be empty"
+        )
+
+        # Configure random seed
+        transformers.set_seed(seed)
+        # NOTE: Following can be uncommented to allow full determinism
+        # but it can have impact on performance.
+        # transformers.enable_full_determinism(seed)
 
         torch_dtype = get_torch_dtype(torch_dtype)
 
@@ -379,6 +391,10 @@ class PeftPromptTuning(ModuleBase):
 
         train_stream = train_stream.map(convert_to_generation_record)
         if val_stream:
+            error.value_check(
+                "<NLP63201425E>", len(val_stream) > 0, "val_stream cannot be empty"
+            )
+
             val_stream = val_stream.map(convert_to_generation_record)
 
         log.debug("Peft config [%s]", peft_config)
@@ -874,12 +890,8 @@ class PeftPromptTuning(ModuleBase):
             Callable
                 collate_fn to be used for processing batches from our datasets.
         """
-        if task_type == "CAUSAL_LM":
-            return DataCollatorForLanguageModeling(
-                tokenizer=tokenizer,
-                return_tensors="pt",
-                mlm=False,
-            )
+        # HACK: Do NOT use the causal LM collator (for now) because
+        # want to set labels ourselves. TODO: centralize collator management.
         return default_data_collator
 
     @classmethod
