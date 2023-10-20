@@ -364,7 +364,7 @@ class PeftPromptTuning(ModuleBase):
         # enabled and then configures the tensors it creates with appropriate
         # setting. If we do not enable this, then we will get `tensor 0` requires
         # grad error, where `tensor 0` is created by peft
-        base_model.model.gradient_checkpointing_enable()
+        # base_model.model.gradient_checkpointing_enable()
 
         base_model_name = base_model._model_name
         # Get config of the base model
@@ -480,9 +480,6 @@ class PeftPromptTuning(ModuleBase):
                 **processing_configuration,
             )
 
-            base_model_trainer = base_model.get_trainer(
-                train_dataset=training_dataset, model=peft_model, **training_args
-            )
 
             if torch.cuda.is_available():
                 # NOTE: torch distributed can hang if run on CPUs,
@@ -492,6 +489,7 @@ class PeftPromptTuning(ModuleBase):
                     get_config().master_addr,
                     get_config().master_port,
                 )
+
                 training_loss_history = torch.distributed.launcher.api.elastic_launch(
                     launch_config, launch_training
                 )(
@@ -499,8 +497,7 @@ class PeftPromptTuning(ModuleBase):
                     training_dataset,
                     training_args,
                     checkpoint_dir,
-                    trainer=base_model_trainer,
-                    tokenizer=base_model.tokenizer
+                    base_model
                 )
                 # NOTE: We are currently only storing the loss information from
                 # rank 0, i.e main process. training_loss_history is dictionary containing

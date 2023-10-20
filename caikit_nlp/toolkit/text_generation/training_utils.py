@@ -108,7 +108,7 @@ def collect_trainer_arguments(
         "weight_decay": 0.01,
         "save_total_limit": 3,
         "gradient_accumulation_steps": accumulate_steps,
-        "gradient_checkpointing": True,
+        # "gradient_checkpointing": True,
         # huggingface configurations
         "push_to_hub": False,
         # dataset configurations
@@ -170,11 +170,15 @@ def launch_training(
     training_dataset,
     training_args,
     checkpoint_dir,
-    trainer=None,
+    foo=None,
     tokenizer=None,
 ) -> None:
     """Utility function to wrap trainer and execute training"""
 
+    if foo:
+        trainer = foo.get_trainer(
+                train_dataset=training_dataset, model=base_model, **training_args
+            )
     if not trainer:
         # If trainer is not provided fetch it from base_model
         if hasattr(base_model, "get_trainer"):
@@ -184,7 +188,6 @@ def launch_training(
         else:
             error("<NLP26155082E>", "could not resolve trainer. Check base model type!")
 
-    breakpoint()
 
     # Start training via Trainer.train function
     result = trainer.train()
