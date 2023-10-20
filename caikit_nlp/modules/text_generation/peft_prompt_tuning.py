@@ -41,6 +41,7 @@ import numpy as np
 import torch
 
 # First Party
+from caikit import get_config
 from caikit.core.data_model import DataStream
 from caikit.core.exceptions import error_handler
 from caikit.core.modules import ModuleBase, ModuleConfig, ModuleSaver, module
@@ -75,6 +76,7 @@ from ...toolkit.text_generation.training_utils import (
     preprocess_function,
 )
 from ...toolkit.verbalizer_utils import render_verbalizer
+from ...toolkit.torch_run import get_torch_elastic_launch_config
 from .peft_config import TuningType, get_peft_config, resolve_base_model
 
 log = alog.use_channel("PEFT_PROMPT")
@@ -443,6 +445,22 @@ class PeftPromptTuning(ModuleBase):
                 training_metadata={"loss": []},
             )
 
+        processing_configuration = {}
+
+        # Conditionally enable sharding if multiple GPUs available
+        if torch.cuda.is_available() and torch.cuda.device_count() > 1:
+            processing_configuration = {
+                "fsdp": "full_shard offload auto_wrap",
+                "fsdp_config": {
+                    # NOTE: Every transformers model has `_no_split_modules` property that can be
+                    # leveraged to identify the layers to split. This seems to be a decent
+                    # "default" behavior unless we want to optimize further. We will start with
+                    # this generic approach, since it allows us to handle variety
+                    # of models and iterate on it, based on what we encounter.
+                    "fsdp_transformer_layer_cls_to_wrap": base_model._model._no_split_modules
+                },
+            }
+
         # Open an intermediate checkpoint directory until we've bootstrapped
         # our model or we've early exited (if epochs < 1)
         with tempfile.TemporaryDirectory() as checkpoint_dir:
@@ -459,20 +477,45 @@ class PeftPromptTuning(ModuleBase):
                 silence_progress_bars=silence_progress_bars,
                 # NOTE: following can override above arguments in order
                 **filtered_training_arguments,
+                **processing_configuration,
             )
 
             base_model_trainer = base_model.get_trainer(
                 train_dataset=training_dataset, model=peft_model, **training_args
             )
 
-            training_loss_history = launch_training(
-                peft_model,
-                training_dataset,
-                training_args,
-                checkpoint_dir,
-                trainer=base_model_trainer,
-                tokenizer=base_model.tokenizer,
-            )
+            if torch.cuda.is_available():
+                # NOTE: torch distributed can hang if run on CPUs,
+                # to avoid that, specially for unit tests, we are only
+                # running below when GPUs are available
+                launch_config = get_torch_elastic_launch_config(
+                    get_config().master_addr,
+                    get_config().master_port,
+                )
+                training_loss_history = torch.distributed.launcher.api.elastic_launch(
+                    launch_config, launch_training
+                )(
+                    peft_model,
+                    training_dataset,
+                    training_args,
+                    checkpoint_dir,
+                    trainer=base_model_trainer,
+                    tokenizer=base_model.tokenizer
+                )
+                # NOTE: We are currently only storing the loss information from
+                # rank 0, i.e main process. training_loss_history is dictionary containing
+                # rank of the process as key
+                training_loss_history = training_loss_history[0]
+            else:
+                # Do not do FSDP things
+                training_loss_history = launch_training(
+                    peft_model,
+                    training_dataset,
+                    training_args,
+                    checkpoint_dir,
+                    trainer=base_model_trainer,
+                    tokenizer=base_model.tokenizer,
+                )
 
         # Remove _name_or_path field as a model can be
         # saved in different location but still same
