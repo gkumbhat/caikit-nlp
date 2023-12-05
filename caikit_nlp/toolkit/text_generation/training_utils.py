@@ -64,6 +64,7 @@ def collect_trainer_arguments(
     num_epochs,
     random_seed,
     learning_rate,
+    accumulate_steps,
     max_steps,
     silence_progress_bars=True,
     **kwargs
@@ -106,6 +107,7 @@ def collect_trainer_arguments(
         "learning_rate": learning_rate,
         "weight_decay": 0.01,
         "save_total_limit": 3,
+        "gradient_accumulation_steps" : accumulate_steps,
         "gradient_checkpointing": True,
         # huggingface configurations
         "push_to_hub": False,

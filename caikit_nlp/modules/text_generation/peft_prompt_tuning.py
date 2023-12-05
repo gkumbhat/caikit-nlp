@@ -497,6 +497,7 @@ class PeftPromptTuning(ModuleBase):
                 num_epochs,
                 cls.RANDOM_SEED,
                 learning_rate,
+                accumulate_steps=accumulate_steps,
                 max_steps=infer_max_steps(num_epochs, batch_size, training_dataset),
                 silence_progress_bars=silence_progress_bars,
                 # NOTE: following can override above arguments in order
