@@ -409,7 +409,9 @@ if __name__ == "__main__":
         train_stream = subsample_stream(train_stream, args.num_shots)
     # Init the resource & Build the tuning config from our dataset/arg info
     print_colored("[Loading the base model resource...]")
+    model_load_start_time = time.time()
     base_model = model_type.bootstrap(args.model_name, tokenizer_name=args.model_name)
+    print(f"Total model+tokenizer load time: {time.time() - model_load_start_time} s")
     tuning_config = build_tuning_config(args, dataset_info)
     # Then actually train the model & save it
     print_colored("[Starting the training...]")
@@ -430,7 +432,7 @@ if __name__ == "__main__":
         accumulate_steps=args.accumulate_steps,
         torch_dtype=args.torch_dtype,
     )
-    print(f"Time to train model: {start_time - time.time()} s")
+    print(f"Time to train model: {time.time() - start_time} s")
 
     model.save(args.output_dir, save_base_model=not args.prompt_only)
     print_colored("[Training Complete]")
