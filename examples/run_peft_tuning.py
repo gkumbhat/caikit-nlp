@@ -104,6 +104,8 @@ def get_resource_type(model_name: str) -> PretrainedModelBase:
         return HFAutoCausalLM
     elif model_type in HFAutoSeq2SeqLM.SUPPORTED_MODEL_TYPES:
         return HFAutoSeq2SeqLM
+    elif model_type in ["hf_adapted_sphinx"]:
+        return HFAutoCausalLM
     raise NotImplementedError(
         "Provided is not supported for any supported resource type!"
     )
@@ -169,6 +171,11 @@ def register_common_arguments(subparsers: Tuple[argparse.ArgumentParser]) -> Non
                 list(SUPPORTED_DATASETS.keys())
             ),
             default="twitter_complaints",
+        )
+        subparser.add_argument(
+            "--file_name",
+            help="Name of the file containing the data",
+            default="DUMMY_FILE",
         )
         subparser.add_argument(
             "--model_name",
@@ -390,7 +397,10 @@ if __name__ == "__main__":
     # Convert the loaded dataset to a stream
     print_colored("[Loading the dataset...]")
     # TODO - conditionally enable validation stream
-    train_stream = dataset_info.dataset_loader()[0]
+    if args.dataset == "file":
+        train_stream = dataset_info.dataset_loader(args.file_name)[0]
+    else:
+        train_stream = dataset_info.dataset_loader()[0]
     if args.num_shots is not None:
         train_stream = subsample_stream(train_stream, args.num_shots)
     # Init the resource & Build the tuning config from our dataset/arg info
@@ -399,6 +409,7 @@ if __name__ == "__main__":
     tuning_config = build_tuning_config(args, dataset_info)
     # Then actually train the model & save it
     print_colored("[Starting the training...]")
+    start_time = time.time()
     model = PeftPromptTuning.train(
         base_model,
         train_stream,
@@ -415,5 +426,7 @@ if __name__ == "__main__":
         accumulate_steps=args.accumulate_steps,
         torch_dtype=args.torch_dtype,
     )
+    print(f"Time to train model: {start_time - time.time()} s")
+
     model.save(args.output_dir, save_base_model=not args.prompt_only)
     print_colored("[Training Complete]")

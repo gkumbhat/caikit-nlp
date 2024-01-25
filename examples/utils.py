@@ -2,6 +2,7 @@
 and evaluating models.
 """
 # Standard
+import json
 import os
 import sys
 
@@ -260,6 +261,33 @@ def load_billsum_dataset() -> Tuple[caikit.core.data_model.DataStream]:
     return (train_stream, validation_stream, test_stream)
 
 
+def load_json_file_dataset(file_name) -> Tuple[caikit.core.data_model.DataStream]:
+    """Load data from json file.
+
+    NOTE: train, test and validation dataset are pointing to entire data
+    in file_name currently.
+
+    Args:
+        file_name: str
+            Name of the json file
+    """
+
+    def to_generation_fmt(x):
+        return GenerationTrainRecord(input=x["input"], output=str(x["output"]))
+
+
+    with open(file_name, "r") as f:
+        data = json.load(f)
+
+    build_stream = lambda : caikit.core.data_model.DataStream.from_iterable(
+        [to_generation_fmt(datum) for datum in data]
+    )
+
+    train_stream = build_stream()
+    validation_stream = build_stream()
+    test_stream = build_stream()
+    return (train_stream, validation_stream, test_stream)
+
 def load_samsum_dataset() -> Tuple[caikit.core.data_model.DataStream]:
     """Load the samsum dataset."""
 
@@ -407,6 +435,11 @@ SUPPORTED_DATASETS = {
         dataset_loader=load_samsum_dataset,
         init_text="",
     ),
+    "file": DatasetInfo(
+        verbalizer="{{input}}",
+        dataset_loader=load_json_file_dataset,
+        init_text="",
+    )
 }
 
 # Supported metrics in huggingface's evaluate library.
