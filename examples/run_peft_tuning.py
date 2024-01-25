@@ -363,6 +363,10 @@ def show_experiment_configuration(args, dataset_info, model_type) -> None:
         if args.prompt_tuning_init == "TEXT"
         else ""
     )
+    dataset_name = args.dataset
+    if dataset_name == "file":
+        dataset_name = f"file: {args.file_name}"
+
     print_strs = [
         "Experiment Configuration",
         "- Model Name: [{}]".format(args.model_name),
