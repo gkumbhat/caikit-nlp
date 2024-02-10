@@ -223,8 +223,10 @@ def launch_training(
 def infer_max_steps(
     num_epochs: int,
     batch_size: int,
+    ga_steps: int,
     training_dataset: Union[Dataset, TransformersIterableDataset],
 ):
+    batch_size = batch_size * ga_steps
     # Calculate the number of samples that we have
     if isinstance(training_dataset, Dataset):
         data_len = len(training_dataset)
@@ -240,6 +242,7 @@ def infer_max_steps(
     if num_batches != (data_len * batch_size):
         num_batches += 1
     num_steps = num_batches * num_epochs
+    log.debug("Number of examples in dataset: [%s]", data_len)
     log.debug("Number of inferred steps: [%s]", num_steps)
     return num_steps
 
