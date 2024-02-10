@@ -370,42 +370,49 @@ def string_to_float(string: str, strict: bool, default: int = -1.0):
 # loader func for grabbing a tuple of three (train, validation||None, test||None) datastreams,
 # and an initialization text string to use for initialize prompt tuning if TEXT is selected
 # as the initialization option.
-DatasetInfo = namedtuple("DatasetInfo", ["verbalizer", "dataset_loader", "init_text"])
+DatasetInfo = namedtuple("DatasetInfo", ["verbalizer", "dataset_loader", "init_text", "string_output"])
 SUPPORTED_DATASETS = {
     "twitter_complaints": DatasetInfo(
         verbalizer="Tweet text : {{input}} Label : ",
         dataset_loader=load_twitter_dataset,
         init_text="Classify if the tweet is a complaint or not:",
+        string_output=True,
     ),
     "glue/cola": DatasetInfo(
         verbalizer="cola { 0 : grammatically unacceptable, 1 : grammatically acceptable } sentence: {{input}}",
         dataset_loader=load_cola_dataset,
         init_text="Classify if the text is a grammatical English sentence or not:",
+        string_output=False,
     ),
     "glue/rte": DatasetInfo(
         verbalizer="rte { 0 : entailment, 1 : not entailment } {{input}}",
         dataset_loader=load_rte_dataset,
         init_text="Recognize textual entailment:",
+        string_output=False,
     ),
     "glue/mrpc": DatasetInfo(
         verbalizer="mrpc { 0 : not equivalent, 1 : equivalent } {{input}}",
         dataset_loader=load_mrpc_dataset,
         init_text="Determine if the sentences are semantically equivalent: ",
+        string_output=False,
     ),
     "financial_phrasebank": DatasetInfo(
         verbalizer="{{input}}",
         dataset_loader=load_financial_phrasebank_dataset,
         init_text="Classify sentiment for each of the news articles: ",
+        string_output=True,
     ),
     "billsum": DatasetInfo(
         verbalizer="{{input}}",
         dataset_loader=load_billsum_dataset,
         init_text="",
+        string_output=True,
     ),
     "samsum": DatasetInfo(
         verbalizer="{{input}}",
         dataset_loader=load_samsum_dataset,
         init_text="",
+        string_output=True,
     ),
 }
 

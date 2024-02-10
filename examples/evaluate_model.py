@@ -82,7 +82,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def get_model_preds_and_references(
-    model, validation_stream, max_new_tokens, truncate_input_tokens
+    model, validation_stream, max_new_tokens, truncate_input_tokens, string_output
 ):
     """Given a model & a validation stream, run the model against every example in the validation
     stream and compare the outputs to the target/output sequence.
@@ -97,6 +97,8 @@ def get_model_preds_and_references(
             Max number of new tokens to be generated, i.e., output limit
         truncate_input_tokens: int
             Number of allowed input tokens, i.e., input limit
+        string_output: bool
+            Whether output is string of label or int
 
     Returns:
         Tuple(List)
@@ -104,6 +106,14 @@ def get_model_preds_and_references(
     """
     model_preds = []
     targets = []
+
+    # Convert data into int for evaluation
+    label_map = {}
+    if string_output:
+        for datum in validation_stream:
+            if datum.output not in label_map:
+                label_map[datum.output] = len(label_map)
+        print("Label map: ", label_map)
 
     for datum in tqdm(validation_stream):
         # Local .run() currently prepends the input text to the generated string;
@@ -114,8 +124,13 @@ def get_model_preds_and_references(
             truncate_input_tokens=truncate_input_tokens,
         ).generated_text
         parse_pred_text = raw_model_text.split(datum.input)[-1].strip()
-        model_preds.append(parse_pred_text)
-        targets.append(datum.output)
+        if string_output:
+            print("model pred: ", parse_pred_text, " target: ", datum.output)
+            model_preds.append(label_map.get(parse_pred_text, -1))
+            targets.append(label_map.get(datum.output, -1))
+        else:
+            model_preds.append(parse_pred_text)
+            targets.append(datum.output)
     return (
         model_preds,
         targets,
@@ -176,7 +191,7 @@ if __name__ == "__main__":
     # Run the data through the model; save the predictions & references
     print_colored("Getting model predictions...")
     predictions, references = get_model_preds_and_references(
-        model, validation_stream, args.max_new_tokens, args.truncate_input_tokens
+        model, validation_stream, args.max_new_tokens, args.truncate_input_tokens, dataset_info.string_output
     )
     print_colored(
         "Exporting model preds, source, verbalized source, and ground truth targets to {}".format(
