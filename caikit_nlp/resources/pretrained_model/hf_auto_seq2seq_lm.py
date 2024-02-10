@@ -23,6 +23,7 @@ from torch.utils.data import IterableDataset
 from transformers import (
     AutoModelForSeq2SeqLM,
     DataCollatorForSeq2Seq,
+    DefaultDataCollator,
     Seq2SeqTrainer,
     Seq2SeqTrainingArguments,
 )
@@ -153,9 +154,7 @@ class HFAutoSeq2SeqLM(PretrainedModelBase):
         applicable_args = ["max_length", "pad_to_multiple_of"]
         collator_kwargs = {key: kwargs[key] for key in applicable_args if key in kwargs}
 
-        return DataCollatorForSeq2Seq(
-            tokenizer=self._tokenizer, model=self._model, **collator_kwargs
-        )
+        return DefaultDataCollator()
 
     @classmethod
     def tokenize_function(

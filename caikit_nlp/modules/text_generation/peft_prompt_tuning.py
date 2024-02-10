@@ -31,7 +31,7 @@ from peft import (
     TaskType,
     get_peft_model,
 )
-from transformers import AutoModelForCausalLM, default_data_collator
+from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, default_data_collator
 from transformers.models.auto.tokenization_auto import AutoTokenizer
 import numpy as np
 import torch
@@ -652,6 +652,13 @@ class PeftPromptTuning(ModuleBase):
                 # get the PEFT causal LM model
                 model = PeftModel.from_pretrained(base_model, model_config)
                 cls.convert_peft_model_to_type(device, model, torch_dtype)
+            elif peft_config.task_type == "SEQ_2_SEQ_LM":
+                base_model = AutoModelForSeq2SeqLM.from_pretrained(
+                    peft_config.base_model_name_or_path,
+                )
+                model = PeftModel.from_pretrained(base_model, model_config)
+                cls.convert_peft_model_to_type(device, model, torch_dtype)
+
             else:
                 # TODO: Handle other model types
                 error(

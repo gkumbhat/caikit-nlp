@@ -21,6 +21,7 @@ from typing import List, Union
 # Third Party
 from transformers import (
     AutoModelForCausalLM,
+    DefaultDataCollator,
     BatchEncoding,
     DataCollatorForLanguageModeling,
 )
@@ -174,8 +175,8 @@ class HFAutoCausalLM(PretrainedModelBase):
         if "mlm" not in collator_kwargs:
             collator_kwargs["mlm"] = False
 
-        return DataCollatorForLanguageModeling(
-            tokenizer=self._tokenizer, return_tensors="pt", **collator_kwargs
+        return DefaultDataCollator(
+            return_tensors="pt",
         )
 
     ### Tokenization strategy implementations
