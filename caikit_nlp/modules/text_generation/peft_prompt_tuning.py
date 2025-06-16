@@ -457,7 +457,8 @@ class PeftPromptTuning(ModuleBase):
 
         # Remove _name_or_path field as a model can be
         # saved in different location but still same
-        del base_model_config["_name_or_path"]
+        if "_name_or_path" in base_model_config:
+            del base_model_config["_name_or_path"]
         error.value_check(
             "<NLP07232147E>",
             "_name_or_path" not in base_model_config,
